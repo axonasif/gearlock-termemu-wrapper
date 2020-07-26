@@ -7,6 +7,13 @@ android {
         minSdkVersion project.ext.minSdkVersion
         targetSdkVersion project.ext.targetSdkVersion
 
+        //Only use en res
+        resConfigs "en"
+        // Only make x86* libs
+        ndk {
+            abiFilters 'x86', 'x86_64'
+        }
+
         //Major.Minor.Patch
         versionCode 10100
         versionName '1.1.0'
