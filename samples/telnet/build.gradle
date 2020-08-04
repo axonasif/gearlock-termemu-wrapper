@@ -4,12 +4,12 @@ android {
     compileSdkVersion project.ext.compileSdkVersion
     buildToolsVersion project.ext.buildToolsVersion
     defaultConfig {
-        applicationId "com.termoneplus.sample.telnet"
+        applicationId 'com.supremegamers.gearlock.sample.telnet'
         minSdkVersion project.ext.minSdkVersion
         targetSdkVersion project.ext.targetSdkVersion
 
-        versionCode 210
-        versionName '2.1.0'
+        versionCode 640
+        versionName '6.4.0'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8

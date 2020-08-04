@@ -4,15 +4,15 @@ android {
     compileSdkVersion project.ext.compileSdkVersion
     buildToolsVersion project.ext.buildToolsVersion
     defaultConfig {
-        applicationId "com.termoneplus.sample.intents"
+        applicationId 'com.supremegamers.gearlock.sample.intents'
         minSdkVersion project.ext.minSdkVersion
         targetSdkVersion project.ext.targetSdkVersion
 
-        versionCode 210
-        versionName '2.1.0'
+        versionCode 640
+        versionName '6.4.0'
 
         // TermOnePlus applicationId
-        manifestPlaceholders = [ termApplicationId:"com.termoneplus"]
+        manifestPlaceholders = [ termApplicationId: 'com.supremegamers.gearlock']
         buildConfigField("String", "TERM_APPLICATION_ID", "\"com.termoneplus\"")
     }
     compileOptions {
