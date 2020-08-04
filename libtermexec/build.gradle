@@ -11,7 +11,7 @@ android {
         resConfigs "en"
         // Only make x86* libs
         ndk {
-            abiFilters 'x86', 'x86_64'
+            abiFilters 'x86'
         }
 
         //Major.Minor.Patch
