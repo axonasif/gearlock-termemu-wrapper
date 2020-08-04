@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
    <!-- Don't localize these default values -->
+   <string name="application_terminal" translatable="false">GearLock</string>
+   <string name="application_site" translatable="false">https://supreme-gamers.com/gearlock</string>
+   <string name="application_email" translatable="false">axon@supreme-gamers.com</string>
    <string name="pref_statusbar_default" translatable="false">1</string>
    <integer name="pref_actionbar_default">1</integer>
    <string name="pref_thememode_default" translatable="false">dark</string>
    <integer name="pref_orientation_default">0</integer>
    <integer name="pref_sizecalc_default">0</integer>
    <string name="pref_cursorstyle_default" translatable="false">0</string>
-   <string name="pref_cursorblink_default" translatable="false">0</string>
+   <string name="pref_cursorblink_default" translatable="false">1</string>
    <string name="pref_fontsize_default" translatable="false">14</string>
    <string name="pref_color_default" translatable="false">1</string>
    <bool name="pref_utf8_by_default_default">true</bool>
