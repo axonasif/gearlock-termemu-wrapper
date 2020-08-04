@@ -72,7 +72,7 @@ public class Installer {
             shell_script.add(". " + sysmkshrc);
 
         // Source application startup script
-        shell_script.add("bash -l");
+        shell_script.add("fixscreen;bash -l");
 
         //Next work fine with mksh but fail with ash.
         //shell_script.add(". /proc/self/fd/0 <<< \"$(libexec-t1plus.so aliases)\"");
