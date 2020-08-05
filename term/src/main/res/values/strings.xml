@@ -25,6 +25,8 @@
     <string name="prev_window">Prev window</string>
     <string name="next_window">Next window</string>
     <string name="reset">Reset term</string>
+    <string name="send_email">Email to</string>
+    <string name="special_keys">Special keys</string>
     <string name="toggle_soft_keyboard">Toggle soft keyboard</string>
 
     <string name="reset_toast_notification">This window\'s terminal state has been reset.</string>
@@ -194,6 +196,8 @@
     <string name="use_keyboard_shortcuts_summary_on">Ctrl-Tab: cycle window, Ctrl-Shift-N: new window, Ctrl-Shift-V: paste.</string>
     <string name="use_keyboard_shortcuts_summary_off">Keyboard shortcuts disabled.</string>
 
+    <string name="help">Help</string>
+    <string name="help_url" translatable="false">https://supreme-gamers.com/gearlock</string>
     <string name="activity_term_here_title">Gear here</string>
     <!-- BEGIN SHORTCUT RELATED STRINGS -->
     <!-- AndroidManifest.xml -->
