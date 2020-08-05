@@ -25,8 +25,6 @@
     <string name="prev_window">Prev window</string>
     <string name="next_window">Next window</string>
     <string name="reset">Reset term</string>
-    <string name="send_email">Email to</string>
-    <string name="special_keys">Special keys</string>
     <string name="toggle_soft_keyboard">Toggle soft keyboard</string>
 
     <string name="reset_toast_notification">This window\'s terminal state has been reset.</string>
@@ -56,9 +54,9 @@
     <!-- Miscellaneous -->
     <string name="window_title">Window %1$d</string>
 
-    <string name="service_notify_text">Terminal session is running</string>
+    <string name="service_notify_text">GearLock session is running</string>
 
-    <string name="process_exit_message">Terminal session finished</string>
+    <string name="process_exit_message">GearLock session finished</string>
 
     <!-- Preference dialog -->
     <string name="screen_preferences">Screen</string>
@@ -174,14 +172,14 @@
 
     <string name="confirm_window_close_message">Close this window?</string>
 
-    <string name="perm_run_script">Run arbitrary commands in Terminal Emulator</string>
-    <string name="permdesc_run_script">Allows application to open new windows in Terminal Emulator for Android and run commands in those windows with all of Terminal Emulator for Android\'s permissions, including access to the Internet and your SD Card.</string>
-    <string name="perm_append_to_path">Add commands to Terminal Emulator</string>
-    <string name="permdesc_append_to_path">Allows application to provide additional commands (add directories to the PATH) for Terminal Emulator for Android.</string>
-    <string name="perm_prepend_to_path">Override commands in Terminal Emulator</string>
-    <string name="permdesc_prepend_to_path">Allows application to override existing commands with its own versions (prepend directories to the PATH) in Terminal Emulator for Android.</string>
+    <string name="perm_run_script">Run arbitrary commands in GearLock</string>
+    <string name="permdesc_run_script">Allows application to open new windows in GearLock for Android and run commands in those windows with all of GearLock for Android\'s permissions, including access to the Internet and your SD Card.</string>
+    <string name="perm_append_to_path">Add commands to GearLock</string>
+    <string name="permdesc_append_to_path">Allows application to provide additional commands (add directories to the PATH) for GearLock for Android-x86.</string>
+    <string name="perm_prepend_to_path">Override commands in GearLock</string>
+    <string name="permdesc_prepend_to_path">Allows application to override existing commands with its own versions (prepend directories to the PATH) in GearLock for Android.</string>
 
-    <string name="email_transcript_subject">Transcript from Terminal Emulator for Android</string>
+    <string name="email_transcript_subject">Transcript from GearLock for Android-x86</string>
     <string name="email_transcript_chooser_title">Mail transcript using:</string>
     <string name="email_transcript_no_email_activity_found">Could not choose an email activity to send transcript.</string>
 
@@ -196,12 +194,10 @@
     <string name="use_keyboard_shortcuts_summary_on">Ctrl-Tab: cycle window, Ctrl-Shift-N: new window, Ctrl-Shift-V: paste.</string>
     <string name="use_keyboard_shortcuts_summary_off">Keyboard shortcuts disabled.</string>
 
-    <string name="help">Help</string>
-    <string name="help_url" translatable="false">https://termoneplus.com/app/help/index.html</string>
-    <string name="activity_term_here_title">Term here</string>
+    <string name="activity_term_here_title">Gear here</string>
     <!-- BEGIN SHORTCUT RELATED STRINGS -->
     <!-- AndroidManifest.xml -->
-    <string name="activity_shortcut_create">Term shortcut</string>
+    <string name="activity_shortcut_create">GearLock shortcut</string>
     <!-- FileSelection activity -->
     <string name="fsnavigator_title">File selector</string>
     <string name="fsnavigator_no_external_storage">External storage not available</string>

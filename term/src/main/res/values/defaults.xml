@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
    <!-- Don't localize these default values -->
+   <string name="get_updates" translatable="false">Get Updates</string>
+   <string name="get_updates_url" translatable="false">https://supreme-gamers.com/resources/gearlock-custom-recovery-replacement-for-android-x86.40</string>
+   <string name="download_gxp" translatable="false">Packages / Extensions</string>
+   <string name="join_discord" translatable="false">Join Discord</string>
+   <string name="join_discord_url" translatable="false">https://discord.gg/sJuRqK5</string>
+   <string name="download_gxp_url" translatable="false">https://supreme-gamers.com/resources</string>
    <string name="application_terminal" translatable="false">GearLock</string>
    <string name="application_site" translatable="false">https://supreme-gamers.com/gearlock</string>
    <string name="application_email" translatable="false">axon@supreme-gamers.com</string>

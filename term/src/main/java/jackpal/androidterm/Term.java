@@ -557,14 +557,14 @@ public class Term extends AppCompatActivity
             case R.id.nav_preferences:
                 doPreferences();
                 return true;
-            case R.id.nav_special_keys:
-                doDocumentKeys();
+            case R.id.nav_get_updates:
+                WrapOpenURL.launch(this, R.string.get_updates_url);
                 return true;
-            case R.id.nav_action_help:
-                WrapOpenURL.launch(this, R.string.help_url);
+            case R.id.nav_download_gxp:
+                WrapOpenURL.launch(this, R.string.download_gxp_url);
                 return true;
-            case R.id.nav_send_email:
-                doEmailTranscript();
+            case R.id.nav_join_discord:
+                WrapOpenURL.launch(this, R.string.join_discord_url);
                 return true;
         }
         return false;

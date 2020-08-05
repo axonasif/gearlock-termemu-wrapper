@@ -31,20 +31,20 @@
     <group>
 
         <item
-            android:id="@+id/nav_special_keys"
+            android:id="@+id/nav_get_updates"
             android:icon="@drawable/ic_vpn_key_white_24dp"
-            android:title="@string/special_keys"/>
+            android:title="@string/get_updates"/>
 
         <item
-            android:id="@+id/nav_action_help"
+            android:id="@+id/nav_download_gxp"
             android:icon="@drawable/ic_help_outline_white_24dp"
-            android:title="@string/help"/>
+            android:title="@string/download_gxp"/>
 
     </group>
 
     <item
-        android:id="@+id/nav_send_email"
+        android:id="@+id/nav_join_discord"
         android:icon="@drawable/ic_email_white_24dp"
-        android:title="@string/send_email"/>
+        android:title="@string/join_discord"/>
 
 </menu>
