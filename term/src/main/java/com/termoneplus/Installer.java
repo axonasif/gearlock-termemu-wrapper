@@ -65,20 +65,24 @@ public class Installer {
     public static boolean installAppScriptFile() {
         ArrayList<String> shell_script = new ArrayList<>();
 
-        String sysmkshrc = "/system/etc/mkshrc";
+        String sysmkshrc = "/gearlock/etc/mkshrc";
         if (!Application.getScriptFilePath().equals(sysmkshrc) &&
                 Application.settings.sourceSystemShellStartupFile() &&
                 new File(sysmkshrc).exists())
             shell_script.add(". " + sysmkshrc);
 
         // Source application startup script
-        shell_script.add(". ~/.shrc");
+        shell_script.add("if [ \"$(whoami)\" != \"root\" ]; then");
+        shell_script.add("      gearlock;bash -l");
+        shell_script.add("else");
+        shell_script.add("      fixscreen;bash -l");
+        shell_script.add("fi");
 
-        //Next work fine with mksh but fail with ash.
-        //shell_script.add(". /proc/self/fd/0 <<< \"$(libexec-t1plus.so aliases)\"");
-        shell_script.add(". /proc/self/fd/0 <<EOF");
-        shell_script.add("$(" + APPINFO_COMMAND + " aliases)");
-        shell_script.add("EOF");
+//         //Next work fine with mksh but fail with ash.
+//         //shell_script.add(". /proc/self/fd/0 <<< \"$(libexec-t1plus.so aliases)\"");
+//         shell_script.add(". /proc/self/fd/0 <<EOF");
+//         shell_script.add("$(" + APPINFO_COMMAND + " aliases)");
+//         shell_script.add("EOF");
 
         return install_text_file(shell_script.toArray(new String[0]), Application.getScriptFile());
     }
