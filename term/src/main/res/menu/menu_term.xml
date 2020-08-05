@@ -32,19 +32,19 @@
 
         <item
             android:id="@+id/nav_get_updates"
-            android:icon="@drawable/ic_vpn_key_white_24dp"
+            android:icon="@drawable/ic_get_updates_white_24dp"
             android:title="@string/get_updates"/>
 
         <item
             android:id="@+id/nav_download_gxp"
-            android:icon="@drawable/ic_help_outline_white_24dp"
+            android:icon="@drawable/ic_download_gxp_white_24dp"
             android:title="@string/download_gxp"/>
 
     </group>
 
     <item
         android:id="@+id/nav_join_discord"
-        android:icon="@drawable/ic_email_white_24dp"
+        android:icon="@drawable/ic_join_discord_white_24dp"
         android:title="@string/join_discord"/>
 
 </menu>
