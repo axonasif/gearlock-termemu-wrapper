@@ -73,9 +73,9 @@ public class Installer {
 
         // Source application startup script
         shell_script.add("if [ \"$(/gearlock/bin/whoami)\" != \"root\" ]; then");
-        shell_script.add("      /gearlock/bin/gearlock;/gearlock/bin/bash -l");
+        shell_script.add("      /gearlock/bin/gearlock;exec /gearlock/bin/bash -l");
         shell_script.add("else");
-        shell_script.add("      /gearlock/bin/fixscreen;/gearlock/bin/bash -l");
+        shell_script.add("      /gearlock/bin/fixscreen;exec /gearlock/bin/bash -l");
         shell_script.add("fi");
 
 //         //Next work fine with mksh but fail with ash.
