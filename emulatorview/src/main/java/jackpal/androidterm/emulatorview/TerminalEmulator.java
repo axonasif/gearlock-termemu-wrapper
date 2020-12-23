@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (C) 2018-2019 Roumen Petrov.  All rights reserved.
+ * Copyright (C) 2018-2020 Roumen Petrov.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,8 @@
 
 package jackpal.androidterm.emulatorview;
 
-import java.io.UnsupportedEncodingException;
+import android.util.Log;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
@@ -27,9 +28,8 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.util.Locale;
 
-import android.util.Log;
-
 import androidx.annotation.IntDef;
+
 
 /**
  * Renders text into a screen. Contains all the terminal-specific knowledge and
@@ -39,9 +39,109 @@ import androidx.annotation.IntDef;
  * video, color) alternate screen cursor key and keypad escape sequences.
  */
 class TerminalEmulator {
-    public void setKeyListener(TermKeyListener l) {
-        mKeyListener = l;
+    /**
+     * The number of parameter arguments. This name comes from the ANSI standard
+     * for terminal escape codes.
+     */
+    private static final int MAX_ESCAPE_PARAMETERS = 16;
+
+    /**
+     * Don't know what the actual limit is, this seems OK for now.
+     */
+    private static final int MAX_OSC_STRING_LENGTH = 512;
+
+    /**
+     * This is not accurate, but it makes the terminal more useful on
+     * small screens.
+     */
+    private static final boolean DEFAULT_TO_AUTOWRAP_ENABLED = true;
+
+    // DecSet flags
+    /**
+     * This mask indicates 132-column mode is set. (As opposed to 80-column
+     * mode.)
+     */
+    private static final int K_132_COLUMN_MODE_MASK = 1 << 3;
+    /**
+     * DECSCNM - set means reverse video (light background.)
+     */
+    private static final int K_REVERSE_VIDEO_MASK = 1 << 5;
+    /**
+     * This mask indicates that origin mode is set. (Cursor addressing is
+     * relative to the absolute screen size, rather than the currently set top
+     * and bottom margins.)
+     */
+    private static final int K_ORIGIN_MODE_MASK = 1 << 6;
+    /**
+     * This mask indicates that wraparound mode is set. (As opposed to
+     * stop-at-right-column mode.)
+     */
+    private static final int K_WRAPAROUND_MODE_MASK = 1 << 7;
+    /**
+     * This mask indicates that the cursor should be shown. DECTCEM
+     */
+    private static final int K_SHOW_CURSOR_MASK = 1 << 25;
+    /**
+     * This mask is the subset of DecSet bits that are saved / restored by
+     * the DECSC / DECRC commands
+     */
+    private static final int K_DECSC_DECRC_MASK = K_ORIGIN_MODE_MASK | K_WRAPAROUND_MODE_MASK;
+
+    private static final int UNICODE_REPLACEMENT_CHAR = 0xfffd;
+
+    // graphics character set constants
+    private static final int CHAR_SET_UK = 0;
+    private static final int CHAR_SET_ASCII = 1;
+    private static final int CHAR_SET_SPECIAL_GRAPHICS = 2;
+    private static final int CHAR_SET_ALT_STANDARD = 3;
+    private static final int CHAR_SET_ALT_SPECIAL_GRAPICS = 4;
+
+    // special graphics character set
+    private static final char[] mSpecialGraphicsCharMap = new char[128];
+
+    static {
+        for (char i = 0; i < 128; ++i)
+            mSpecialGraphicsCharMap[i] = i;
+        mSpecialGraphicsCharMap['_'] = ' ';     // Blank
+        mSpecialGraphicsCharMap['b'] = 0x2409;  // Tab
+        mSpecialGraphicsCharMap['c'] = 0x240C;  // Form feed
+        mSpecialGraphicsCharMap['d'] = 0x240D;  // Carriage return
+        mSpecialGraphicsCharMap['e'] = 0x240A;  // Line feed
+        mSpecialGraphicsCharMap['h'] = 0x2424;  // New line
+        mSpecialGraphicsCharMap['i'] = 0x240B;  // Vertical tab/"lantern"
+        mSpecialGraphicsCharMap['}'] = 0x00A3;  // Pound sterling symbol
+        mSpecialGraphicsCharMap['f'] = 0x00B0;  // Degree symbol
+        mSpecialGraphicsCharMap['`'] = 0x2B25;  // Diamond
+        mSpecialGraphicsCharMap['~'] = 0x2022;  // Bullet point
+        mSpecialGraphicsCharMap['y'] = 0x2264;  // Less-than-or-equals sign (<=)
+        mSpecialGraphicsCharMap['|'] = 0x2260;  // Not equals sign (!=)
+        mSpecialGraphicsCharMap['z'] = 0x2265;  // Greater-than-or-equals sign (>=)
+        mSpecialGraphicsCharMap['g'] = 0x00B1;  // Plus-or-minus sign (+/-)
+        mSpecialGraphicsCharMap['{'] = 0x03C0;  // Lowercase Greek letter pi
+        mSpecialGraphicsCharMap['.'] = 0x25BC;  // Down arrow
+        mSpecialGraphicsCharMap[','] = 0x25C0;  // Left arrow
+        mSpecialGraphicsCharMap['+'] = 0x25B6;  // Right arrow
+        mSpecialGraphicsCharMap['-'] = 0x25B2;  // Up arrow
+        mSpecialGraphicsCharMap['h'] = '#';     // Board of squares
+        mSpecialGraphicsCharMap['a'] = 0x2592;  // Checkerboard
+        mSpecialGraphicsCharMap['0'] = 0x2588;  // Solid block
+        mSpecialGraphicsCharMap['q'] = 0x2500;  // Horizontal line (box drawing)
+        mSpecialGraphicsCharMap['x'] = 0x2502;  // Vertical line (box drawing)
+        mSpecialGraphicsCharMap['m'] = 0x2514;  // Lower left hand corner (box drawing)
+        mSpecialGraphicsCharMap['j'] = 0x2518;  // Lower right hand corner (box drawing)
+        mSpecialGraphicsCharMap['l'] = 0x250C;  // Upper left hand corner (box drawing)
+        mSpecialGraphicsCharMap['k'] = 0x2510;  // Upper right hand corner (box drawing)
+        mSpecialGraphicsCharMap['w'] = 0x252C;  // T pointing downwards (box drawing)
+        mSpecialGraphicsCharMap['u'] = 0x2524;  // T pointing leftwards (box drawing)
+        mSpecialGraphicsCharMap['t'] = 0x251C;  // T pointing rightwards (box drawing)
+        mSpecialGraphicsCharMap['v'] = 0x2534;  // T pointing upwards (box drawing)
+        mSpecialGraphicsCharMap['n'] = 0x253C;  // Large plus/lines crossing (box drawing)
+        mSpecialGraphicsCharMap['o'] = 0x23BA;  // Horizontal scanline 1
+        mSpecialGraphicsCharMap['p'] = 0x23BB;  // Horizontal scanline 3
+        mSpecialGraphicsCharMap['r'] = 0x23BC;  // Horizontal scanline 7
+        mSpecialGraphicsCharMap['s'] = 0x23BD;  // Horizontal scanline 9
     }
+
     private TermKeyListener mKeyListener;
     /**
      * The cursor row. Numbered 0..mRows-1.
@@ -82,12 +182,6 @@ class TerminalEmulator {
     private int mArgIndex;
 
     /**
-     * The number of parameter arguments. This name comes from the ANSI standard
-     * for terminal escape codes.
-     */
-    private static final int MAX_ESCAPE_PARAMETERS = 16;
-
-    /**
      * Holds the arguments of the current escape sequence.
      */
     private int[] mArgs = new int[MAX_ESCAPE_PARAMETERS];
@@ -100,11 +194,6 @@ class TerminalEmulator {
     private int mOSCArgLength;
 
     private int mOSCArgTokenizerIndex;
-
-    /**
-     * Don't know what the actual limit is, this seems OK for now.
-     */
-    private static final int MAX_OSC_STRING_LENGTH = 512;
 
     /**
      * True if the current escape sequence should continue, false if the current
@@ -136,44 +225,6 @@ class TerminalEmulator {
     private int mSavedDecFlags_DECSC_DECRC;
 
 
-    // DecSet booleans
-
-    /**
-     * This mask indicates 132-column mode is set. (As opposed to 80-column
-     * mode.)
-     */
-    private static final int K_132_COLUMN_MODE_MASK = 1 << 3;
-
-    /**
-     * DECSCNM - set means reverse video (light background.)
-     */
-    private static final int K_REVERSE_VIDEO_MASK = 1 << 5;
-
-    /**
-     * This mask indicates that origin mode is set. (Cursor addressing is
-     * relative to the absolute screen size, rather than the currently set top
-     * and bottom margins.)
-     */
-    private static final int K_ORIGIN_MODE_MASK = 1 << 6;
-
-    /**
-     * This mask indicates that wraparound mode is set. (As opposed to
-     * stop-at-right-column mode.)
-     */
-    private static final int K_WRAPAROUND_MODE_MASK = 1 << 7;
-
-    /**
-     * This mask indicates that the cursor should be shown. DECTCEM
-     */
-
-    private static final int K_SHOW_CURSOR_MASK = 1 << 25;
-
-    /** This mask is the subset of DecSet bits that are saved / restored by
-     * the DECSC / DECRC commands
-     */
-    private static final int K_DECSC_DECRC_MASK =
-            K_ORIGIN_MODE_MASK | K_WRAPAROUND_MODE_MASK;
-
     /**
      * Holds multiple DECSET flags. The data is stored this way, rather than in
      * separate booleans, to make it easier to implement the save-and-restore
@@ -188,12 +239,11 @@ class TerminalEmulator {
      */
     private int mSavedDecFlags;
 
+    // Modes set with Set Mode / Reset Mode
     /**
      * The current DECSET mouse tracking mode, zero for no mouse tracking.
      */
     private int mMouseTrackingMode;
-
-    // Modes set with Set Mode / Reset Mode
 
     /**
      * True if insert mode (as opposed to replace mode) is active. In insert
@@ -208,7 +258,6 @@ class TerminalEmulator {
     private boolean[] mTabStop;
 
     // The margins allow portions of the screen to be locked.
-
     /**
      * The top margin of the screen, for scrolling purposes. Ranges from 0 to
      * mRows-2.
@@ -266,70 +315,17 @@ class TerminalEmulator {
 
     private boolean mbKeypadApplicationMode;
 
-    /** false == G0, true == G1 */
+    // false == G0, true == G1
     private boolean mAlternateCharSet;
 
-    private final static int CHAR_SET_UK = 0;
-    private final static int CHAR_SET_ASCII = 1;
-    private final static int CHAR_SET_SPECIAL_GRAPHICS = 2;
-    private final static int CHAR_SET_ALT_STANDARD = 3;
-    private final static int CHAR_SET_ALT_SPECIAL_GRAPICS = 4;
-
-    /** What is the current graphics character set. [0] == G0, [1] == G1 */
+    // What is the current graphics character set. [0] == G0, [1] == G1
     private int[] mCharSet = new int[2];
 
-    /** Derived from mAlternateCharSet and mCharSet.
-     *  True if we're supposed to be drawing the special graphics.
+    /**
+     * Derived from mAlternateCharSet and mCharSet.
+     * True if we're supposed to be drawing the special graphics.
      */
     private boolean mUseAlternateCharSet;
-
-    /**
-     * Special graphics character set
-     */
-    private static final char[] mSpecialGraphicsCharMap = new char[128];
-    static {
-        for (char i = 0; i < 128; ++i) {
-            mSpecialGraphicsCharMap[i] = i;
-        }
-        mSpecialGraphicsCharMap['_'] = ' ';	// Blank
-        mSpecialGraphicsCharMap['b'] = 0x2409;	// Tab
-        mSpecialGraphicsCharMap['c'] = 0x240C;	// Form feed
-        mSpecialGraphicsCharMap['d'] = 0x240D;	// Carriage return
-        mSpecialGraphicsCharMap['e'] = 0x240A;	// Line feed
-        mSpecialGraphicsCharMap['h'] = 0x2424;	// New line
-        mSpecialGraphicsCharMap['i'] = 0x240B;	// Vertical tab/"lantern"
-        mSpecialGraphicsCharMap['}'] = 0x00A3;	// Pound sterling symbol
-        mSpecialGraphicsCharMap['f'] = 0x00B0;	// Degree symbol
-        mSpecialGraphicsCharMap['`'] = 0x2B25;	// Diamond
-        mSpecialGraphicsCharMap['~'] = 0x2022;	// Bullet point
-        mSpecialGraphicsCharMap['y'] = 0x2264;	// Less-than-or-equals sign (<=)
-        mSpecialGraphicsCharMap['|'] = 0x2260;	// Not equals sign (!=)
-        mSpecialGraphicsCharMap['z'] = 0x2265;	// Greater-than-or-equals sign (>=)
-        mSpecialGraphicsCharMap['g'] = 0x00B1;	// Plus-or-minus sign (+/-)
-        mSpecialGraphicsCharMap['{'] = 0x03C0;	// Lowercase Greek letter pi
-        mSpecialGraphicsCharMap['.'] = 0x25BC;	// Down arrow
-        mSpecialGraphicsCharMap[','] = 0x25C0;	// Left arrow
-        mSpecialGraphicsCharMap['+'] = 0x25B6;	// Right arrow
-        mSpecialGraphicsCharMap['-'] = 0x25B2;	// Up arrow
-        mSpecialGraphicsCharMap['h'] = '#';	// Board of squares
-        mSpecialGraphicsCharMap['a'] = 0x2592;	// Checkerboard
-        mSpecialGraphicsCharMap['0'] = 0x2588;	// Solid block
-        mSpecialGraphicsCharMap['q'] = 0x2500;	// Horizontal line (box drawing)
-        mSpecialGraphicsCharMap['x'] = 0x2502;	// Vertical line (box drawing)
-        mSpecialGraphicsCharMap['m'] = 0x2514;	// Lower left hand corner (box drawing)
-        mSpecialGraphicsCharMap['j'] = 0x2518;	// Lower right hand corner (box drawing)
-        mSpecialGraphicsCharMap['l'] = 0x250C;	// Upper left hand corner (box drawing)
-        mSpecialGraphicsCharMap['k'] = 0x2510;	// Upper right hand corner (box drawing)
-        mSpecialGraphicsCharMap['w'] = 0x252C;	// T pointing downwards (box drawing)
-        mSpecialGraphicsCharMap['u'] = 0x2524;	// T pointing leftwards (box drawing)
-        mSpecialGraphicsCharMap['t'] = 0x251C;	// T pointing rightwards (box drawing)
-        mSpecialGraphicsCharMap['v'] = 0x2534;	// T pointing upwards (box drawing)
-        mSpecialGraphicsCharMap['n'] = 0x253C;	// Large plus/lines crossing (box drawing)
-        mSpecialGraphicsCharMap['o'] = 0x23BA;	// Horizontal scanline 1
-        mSpecialGraphicsCharMap['p'] = 0x23BB;	// Horizontal scanline 3
-        mSpecialGraphicsCharMap['r'] = 0x23BC;	// Horizontal scanline 7
-        mSpecialGraphicsCharMap['s'] = 0x23BD;	// Horizontal scanline 9
-    }
 
     /**
      * Used for moving selection up along with the scrolling text
@@ -339,7 +335,6 @@ class TerminalEmulator {
     /**
      * UTF-8 support
      */
-    private static final int UNICODE_REPLACEMENT_CHAR = 0xfffd;
     private boolean mUTF8Mode = false;
     private boolean mUTF8EscapeUsed = false;
     private int mUTF8ToFollow = 0;
@@ -347,11 +342,6 @@ class TerminalEmulator {
     private CharBuffer mInputCharBuffer;
     private CharsetDecoder mUTF8Decoder;
     private UpdateCallback mUTF8ModeNotify;
-
-    /** This is not accurate, but it makes the terminal more useful on
-     * small screens.
-     */
-    private final static boolean DEFAULT_TO_AUTOWRAP_ENABLED = true;
 
     /**
      * Construct a terminal emulator that uses the supplied screen
@@ -363,6 +353,8 @@ class TerminalEmulator {
      * @param scheme the default color scheme of this emulator
      */
     public TerminalEmulator(TermSession session, TranscriptScreen screen, int columns, int rows, ColorScheme scheme) {
+        mKeyListener = new TermKeyListener(session);
+
         // on Android default charset is always UTF-8
         mUTF8Decoder = Charset.defaultCharset().newDecoder();
         mUTF8Decoder.onMalformedInput(CodingErrorAction.REPLACE);
@@ -382,6 +374,10 @@ class TerminalEmulator {
         mInputCharBuffer = CharBuffer.allocate(2);
 
         reset();
+    }
+
+    public TermKeyListener getKeyListener() {
+        return mKeyListener;
     }
 
     public TranscriptScreen getScreen() {
@@ -409,7 +405,7 @@ class TerminalEmulator {
         }
 
         // Try to resize the screen without getting the transcript
-        int[] cursor = { mCursorCol, mCursorRow };
+        int[] cursor = {mCursorCol, mCursorRow};
         boolean fastResize = screen.fastResize(columns, rows, cursor);
 
         GrowableIntArray cursorColor = null;
@@ -466,7 +462,7 @@ class TerminalEmulator {
             mCursorCol = 0;
             mAboutToAutoWrap = false;
 
-            int end = altTranscriptText.length()-1;
+            int end = altTranscriptText.length() - 1;
             /* Unlike for the main transcript below, don't trim off trailing
              * newlines -- the alternate transcript lacks a cursor marking, so
              * we might introduce an unwanted vertical shift in the screen
@@ -475,7 +471,7 @@ class TerminalEmulator {
             int colorOffset = 0;
             for (int i = 0; i <= end; i++) {
                 c = altTranscriptText.charAt(i);
-                int style = altColors.at(i-colorOffset);
+                int style = altColors.at(i - colorOffset);
                 if (Character.isHighSurrogate(c)) {
                     cLow = altTranscriptText.charAt(++i);
                     emit(Character.toCodePoint(c, cLow), style);
@@ -513,15 +509,15 @@ class TerminalEmulator {
         int newCursorRow = -1;
         int newCursorCol = -1;
         int newCursorTranscriptPos = -1;
-        int end = transcriptText.length()-1;
+        int end = transcriptText.length() - 1;
         while ((end >= 0) && transcriptText.charAt(end) == '\n') {
             end--;
         }
         char c, cLow;
         int colorOffset = 0;
-        for(int i = 0; i <= end; i++) {
+        for (int i = 0; i <= end; i++) {
             c = transcriptText.charAt(i);
-            int style = colors.at(i-colorOffset);
+            int style = colors.at(i - colorOffset);
             if (Character.isHighSurrogate(c)) {
                 cLow = transcriptText.charAt(++i);
                 emit(Character.toCodePoint(c, cLow), style);
@@ -869,15 +865,15 @@ class TerminalEmulator {
     private void doEscPercent(byte b) {
         switch (b) {
         case '@': // Esc % @ -- return to ISO 2022 mode
-           setUTF8Mode(false);
-           mUTF8EscapeUsed = true;
-           break;
+            setUTF8Mode(false);
+            mUTF8EscapeUsed = true;
+            break;
         case 'G': // Esc % G -- UTF-8 mode
-           setUTF8Mode(true);
-           mUTF8EscapeUsed = true;
-           break;
+            setUTF8Mode(true);
+            mUTF8EscapeUsed = true;
+            break;
         default: // unimplemented character set
-           break;
+            break;
         }
     }
 
@@ -963,11 +959,10 @@ class TerminalEmulator {
 
     private void doLinefeed() {
         int newCursorRow = mCursorRow + 1;
-        if (newCursorRow >= mBottomMargin) {
+        if (newCursorRow == mBottomMargin)
             scroll();
-            newCursorRow = mBottomMargin - 1;
-        }
-        setCursorRow(newCursorRow);
+        else
+            setCursorRow(Math.min(newCursorRow, mRows - 1));
     }
 
     private void continueSequence() {
@@ -1050,7 +1045,7 @@ class TerminalEmulator {
         case '8': // DECRC restore cursor
             setCursorRowCol(mSavedCursorRow, mSavedCursorCol);
             mEffect = mSavedEffect;
-            mDecFlags = (mDecFlags & ~ K_DECSC_DECRC_MASK)
+            mDecFlags = (mDecFlags & ~K_DECSC_DECRC_MASK)
                     | mSavedDecFlags_DECSC_DECRC;
             break;
 
@@ -1116,7 +1111,7 @@ class TerminalEmulator {
             continueSequence(EscapeProcessingState.RIGHT_SQUARE_BRACKET);
             break;
 
-        case '>' : // DECKPNM
+        case '>': // DECKPNM
             mbKeypadApplicationMode = false;
             break;
 
@@ -1137,16 +1132,30 @@ class TerminalEmulator {
             mScreen.blockCopy(mCursorCol, mCursorRow, charsToMove, 1,
                     mCursorCol + charsToInsert, mCursorRow);
             blockClear(mCursorCol, mCursorRow, charsToInsert);
-        }
             break;
+        }
 
         case 'A': // ESC [ Pn A - Cursor Up
-            setCursorRow(Math.max(0, mCursorRow - getArg0(1)));
+        {
+            int row = mCursorRow - getArg0(1);
+            if (mCursorRow < mTopMargin)
+                row = Math.max(0, row);
+            else
+                row = Math.max(mTopMargin, row);
+            setCursorRow(row);
             break;
+        }
 
         case 'B': // ESC [ Pn B - Cursor Down
-            setCursorRow(Math.min(mRows - 1, mCursorRow + getArg0(1)));
+        {
+            int row = mCursorRow + getArg0(1);
+            if (mCursorRow >= mBottomMargin)
+                row = Math.min(mRows - 1, row);
+            else
+                row = Math.min(mBottomMargin - 1, row);
+            setCursorRow(row);
             break;
+        }
 
         case 'C': // ESC [ Pn C - Cursor Right
             setCursorCol(Math.min(mColumns - 1, mCursorCol + getArg0(1)));
@@ -1216,8 +1225,8 @@ class TerminalEmulator {
             mScreen.blockCopy(0, mCursorRow, mColumns, linesToMove, 0,
                     mCursorRow + linesToInsert);
             blockClear(0, mCursorRow, mColumns, linesToInsert);
-        }
             break;
+        }
 
         case 'M': // Delete Lines
         {
@@ -1227,8 +1236,8 @@ class TerminalEmulator {
             mScreen.blockCopy(0, mCursorRow + linesToDelete, mColumns,
                     linesToMove, 0, mCursorRow);
             blockClear(0, mCursorRow + linesToMove, mColumns, linesToDelete);
-        }
             break;
+        }
 
         case 'P': // Delete Characters
         {
@@ -1238,8 +1247,8 @@ class TerminalEmulator {
             mScreen.blockCopy(mCursorCol + charsToDelete, mCursorRow,
                     charsToMove, 1, mCursorCol, mCursorRow);
             blockClear(mCursorCol + charsToMove, mCursorRow, charsToDelete);
-        }
             break;
+        }
 
         case 'T': // Mouse tracking
             unimplementedSequence(b);
@@ -1305,7 +1314,7 @@ class TerminalEmulator {
             switch (getArg0(0)) {
             case 5: // Device status report (DSR):
                     // Answer is ESC [ 0 n (Terminal OK).
-                byte[] dsr = { (byte) 27, (byte) '[', (byte) '0', (byte) 'n' };
+                byte[] dsr = {(byte) 27, (byte) '[', (byte) '0', (byte) 'n'};
                 mSession.write(dsr, 0, dsr.length);
                 break;
 
@@ -1346,8 +1355,8 @@ class TerminalEmulator {
             // The cursor is placed in the home position
             // column 1, line 1 of the page(numbering from 1).
             setCursorRowCol(0, 0);
-        }
             break;
+        }
 
         default:
             parseArg(b);
@@ -1359,7 +1368,7 @@ class TerminalEmulator {
         // SGR
         for (int i = 0; i <= mArgIndex; i++) {
             int code = mArgs[i];
-            if ( code < 0) {
+            if (code < 0) {
                 if (mArgIndex > 0) {
                     continue;
                 } else {
@@ -1404,8 +1413,8 @@ class TerminalEmulator {
                 mEffect &= ~TextStyle.fxInvisible;
             } else if (code >= 30 && code <= 37) { // foreground color
                 mForeColor = code - 30;
-            } else if (code == 38 && i+2 <= mArgIndex && mArgs[i+1] == 5) { // foreground 256 color
-                int color = mArgs[i+2];
+            } else if (code == 38 && (i + 2) <= mArgIndex && mArgs[i + 1] == 5) { // foreground 256 color
+                int color = mArgs[i + 2];
                 if (isValidColorIndex(color))
                     mForeColor = color;
                 i += 2;
@@ -1413,8 +1422,8 @@ class TerminalEmulator {
                 mForeColor = mDefaultForeColor;
             } else if (code >= 40 && code <= 47) { // background color
                 mBackColor = code - 40;
-            } else if (code == 48 && i+2 <= mArgIndex && mArgs[i+1] == 5) { // background 256 color
-                int color = mArgs[i+2];
+            } else if (code == 48 && (i + 2) <= mArgIndex && mArgs[i + 1] == 5) { // background 256 color
+                int color = mArgs[i + 2];
                 if (isValidColorIndex(color))
                     mBackColor = color;
                 i += 2;
@@ -1505,11 +1514,11 @@ class TerminalEmulator {
     }
 
     private int getStyle() {
-        return TextStyle.encode(mForeColor, mBackColor,  mEffect);
+        return TextStyle.encode(mForeColor, mBackColor, mEffect);
     }
 
     private int getDefaultStyle() {
-        return TextStyle.encode(mDefaultForeColor, mDefaultBackColor,  TextStyle.fxNormal);
+        return TextStyle.encode(mDefaultForeColor, mDefaultBackColor, TextStyle.fxNormal);
     }
 
     private void doSetMode(boolean newValue) {
@@ -1573,7 +1582,7 @@ class TerminalEmulator {
     }
 
     private void scroll() {
-        mScrollCounter ++;
+        mScrollCounter++;
         mScreen.scroll(mTopMargin, mBottomMargin, getStyle());
     }
 
@@ -1653,7 +1662,7 @@ class TerminalEmulator {
         if (start == end) {
             return "";
         }
-        return new String(mOSCArg, start, end-start, mUTF8Decoder.charset());
+        return new String(mOSCArg, start, end - start, mUTF8Decoder.charset());
     }
 
     private int nextOSCInt(int delimiter) {
@@ -1782,7 +1791,7 @@ class TerminalEmulator {
             mAboutToAutoWrap = (mCursorCol == mColumns - 1);
 
             //Force line-wrap flag to trigger even for lines being typed
-            if(mAboutToAutoWrap)
+            if (mAboutToAutoWrap)
                 mScreen.setLineWrap(mCursorRow);
         }
 
@@ -1828,7 +1837,7 @@ class TerminalEmulator {
                 break;
             }
             if (Character.isHighSurrogate(c[i])) {
-                emit(Character.toCodePoint(c[i], c[i+1]), style);
+                emit(Character.toCodePoint(c[i], c[i + 1]), style);
                 ++i;
             } else {
                 emit((int) c[i], style);
@@ -1847,8 +1856,8 @@ class TerminalEmulator {
     }
 
     private void setCursorRowCol(int row, int col) {
-        mCursorRow = Math.min(row, mRows-1);
-        mCursorCol = Math.min(col, mColumns-1);
+        mCursorRow = Math.min(row, mRows - 1);
+        mCursorCol = Math.min(col, mColumns - 1);
         mAboutToAutoWrap = false;
     }
 

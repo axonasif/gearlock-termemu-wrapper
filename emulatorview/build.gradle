@@ -15,8 +15,8 @@ android {
         }
 
         //Major.Minor.Patch
-        versionCode 10506
-        versionName '1.5.6'
+        versionCode 10600
+        versionName '1.6.0'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8

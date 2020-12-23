@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Steven Luo
+ * Copyright (C) 2018-2020 Roumen Petrov.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +17,12 @@
 
 package jackpal.androidterm.emulatorview;
 
-import android.icu.lang.UCharacter;
-import android.icu.lang.UProperty;
 import android.os.Build;
-import android.text.AndroidCharacter;
 import android.util.Log;
 
-import java.util.Arrays;
+import com.termoneplus.compat.CharacterCompat;
 
-import androidx.annotation.RequiresApi;
+import java.util.Arrays;
 
 
 /**
@@ -58,7 +56,7 @@ class UnicodeTranscript {
     private int mScreenRows;
     private int mColumns;
     private int mActiveTranscriptRows = 0;
-    private int mDefaultStyle = 0;
+    private int mDefaultStyle;
 
     private int mScreenFirstRow = 0;
 
@@ -549,16 +547,18 @@ class UnicodeTranscript {
                 return 2;
             }
         }
-        if (Character.charCount(codePoint) == 1) {
-            if (EastAsianWidthCompat.isDoubleWidth(codePoint)) {
+        if (CharacterCompat.charCount(codePoint) == 1) {
+            if (CharacterCompat.isEastAsianDoubleWidth(codePoint)) {
                 return 2;
             }
         } else {
-            // Outside the BMP, only the ideographic planes contain wide chars
+            // Outside the BMP, ideographic planes contain wide chars
             switch ((codePoint >> 16) & 0xf) {
             case 2: // Supplementary Ideographic Plane
             case 3: // Tertiary Ideographic Plane
                 return 2;
+            case 1: // Supplementary Multilingual Plane
+                return 2; // TODO
             }
         }
 
@@ -767,7 +767,7 @@ class UnicodeTranscript {
     }
 
     private boolean isBasicChar(int codePoint) {
-        return !(charWidth(codePoint) != 1 || Character.charCount(codePoint) != 1);
+        return !(charWidth(codePoint) != 1 || CharacterCompat.charCount(codePoint) != 1);
     }
 
     private char[] allocateBasicLine(int row, int columns) {
@@ -865,41 +865,6 @@ class UnicodeTranscript {
         FullUnicodeLine line = (FullUnicodeLine) mLines[row];
         line.setChar(column, codePoint);
         return true;
-    }
-
-    private static class EastAsianWidthCompat {
-        private static boolean isDoubleWidth(int ch /*code point*/) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N /*API Level 24*/)
-                return Compat1.isDoubleWidth(ch);
-            else
-                return Compat24.isDoubleWidth(ch);
-        }
-
-        private static class Compat1 {
-            @SuppressWarnings("deprecation")
-            private static boolean isDoubleWidth(int ch) {
-                // Android's getEastAsianWidth() only works for BMP characters
-                switch (AndroidCharacter.getEastAsianWidth((char) ch)) {
-                    case AndroidCharacter.EAST_ASIAN_WIDTH_FULL_WIDTH:
-                    case AndroidCharacter.EAST_ASIAN_WIDTH_WIDE:
-                        return true;
-                }
-                return false;
-            }
-        }
-
-        @RequiresApi(24)
-        private static class Compat24 {
-            private static boolean isDoubleWidth(int ch) {
-                int ea = UCharacter.getIntPropertyValue(ch, UProperty.EAST_ASIAN_WIDTH);
-                switch (ea) {
-                    case UCharacter.EastAsianWidth.FULLWIDTH:
-                    case UCharacter.EastAsianWidth.WIDE:
-                        return true;
-                }
-                return false;
-            }
-        }
     }
 }
 
@@ -1018,7 +983,7 @@ class FullUnicodeLine {
         }
 
         // Find how much space this column will need
-        int newLen = Character.charCount(codePoint);
+        int newLen = CharacterCompat.charCount(codePoint);
         if (charWidth == 0) {
             /* Combining characters are added to the contents of the column
                instead of overwriting them, so that they modify the existing
@@ -1029,7 +994,8 @@ class FullUnicodeLine {
 
         // Shift the rest of the line right to make room if necessary
         if (shift > 0) {
-            if (spaceUsed + shift > text.length) {
+            // Note requirement for "NUL-terminated" line!
+            if ((spaceUsed + 1) >= text.length) {
                 // We need to grow the array
                 char[] newText = new char[text.length + columns];
                 System.arraycopy(text, 0, newText, 0, pos);
@@ -1042,11 +1008,11 @@ class FullUnicodeLine {
 
         // Store the character
         if (charWidth > 0) {
-            Character.toChars(codePoint, text, pos);
+            CharacterCompat.toChars(codePoint, text, pos);
         } else {
             /* Store a combining character at the end of the existing contents,
                so that it modifies them */
-            Character.toChars(codePoint, text, pos + oldLen);
+            CharacterCompat.toChars(codePoint, text, pos + oldLen);
         }
 
         // Shift the rest of the line left to eliminate gaps if necessary
@@ -1074,7 +1040,8 @@ class FullUnicodeLine {
         if (oldCharWidth == 2 && charWidth == 1 || wasExtraColForWideChar && charWidth == 2) {
             int nextPos = pos + newLen;
             char[] newText = text;
-            if (spaceUsed + 1 > text.length) {
+            // Note requirement for "NUL-terminated" line!
+            if ((spaceUsed + 1) >= text.length) {
                 // Array needs growing
                 newText = new char[text.length + columns];
                 System.arraycopy(text, 0, newText, 0, wasExtraColForWideChar ? pos : nextPos);

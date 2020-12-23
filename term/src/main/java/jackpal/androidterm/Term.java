@@ -41,6 +41,7 @@ import android.view.ContextMenu.ContextMenuInfo;
 import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -370,8 +371,7 @@ public class Term extends AppCompatActivity
     }
 
     private TermView createEmulatorView(TermSession session) {
-        DisplayMetrics metrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
         TermView emulatorView = new TermView(this, session, metrics);
 
         emulatorView.setExtGestureListener(new EmulatorViewGestureListener(emulatorView));
@@ -396,11 +396,9 @@ public class Term extends AppCompatActivity
     protected void updatePrefs() {
         mUseKeyboardShortcuts = mSettings.getUseKeyboardShortcutsFlag();
 
-        DisplayMetrics metrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(metrics);
-
         mViewFlipper.updatePrefs(mSettings);
 
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
         for (View v : mViewFlipper) {
             ((EmulatorView) v).setDensity(metrics);
             ((TermView) v).updatePrefs(mSettings);
@@ -597,11 +595,11 @@ public class Term extends AppCompatActivity
         b.setIcon(android.R.drawable.ic_dialog_alert);
         b.setMessage(R.string.confirm_window_close_message);
         final Runnable closeWindow = this::doCloseWindow;
-        b.setPositiveButton(android.R.string.yes, (dialog, id) -> {
+        b.setPositiveButton(android.R.string.ok, (dialog, id) -> {
             dialog.dismiss();
             mHandler.post(closeWindow);
         });
-        b.setNegativeButton(android.R.string.no, null);
+        b.setNegativeButton(android.R.string.cancel, null);
         b.show();
     }
 
@@ -814,7 +812,7 @@ public class Term extends AppCompatActivity
                     mViewFlipper,
                     R.string.message_external_storage_rationale,
                     Snackbar.LENGTH_INDEFINITE)
-                    .setAction(android.R.string.yes,
+                    .setAction(android.R.string.ok,
                             view -> Permissions.requestPermissionExternalStorage(
                                     this,
                                     Permissions.REQUEST_EXTERNAL_STORAGE))
@@ -925,10 +923,15 @@ public class Term extends AppCompatActivity
     }
 
     private void doDocumentKeys() {
+        LayoutInflater inflater = getLayoutInflater();
+        View view = inflater.inflate(R.layout.dialog_special_keys, null);
+        TextView message = view.findViewById(R.id.special_keys);
+
         AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+        dialog.setView(view);
         Resources r = getResources();
         dialog.setTitle(r.getString(R.string.control_key_dialog_title));
-        dialog.setMessage(
+        String hint =
                 formatMessage(mSettings.getControlKeyId(), TermSettings.CONTROL_KEY_ID_NONE,
                         r, R.array.control_keys_short_names,
                         R.string.control_key_dialog_control_text,
@@ -937,7 +940,8 @@ public class Term extends AppCompatActivity
                         formatMessage(mSettings.getFnKeyId(), TermSettings.FN_KEY_ID_NONE,
                                 r, R.array.fn_keys_short_names,
                                 R.string.control_key_dialog_fn_text,
-                                R.string.control_key_dialog_fn_disabled_text, "FNKEY"));
+                                R.string.control_key_dialog_fn_disabled_text, "FNKEY");
+        message.setText(hint);
         dialog.show();
     }
 
