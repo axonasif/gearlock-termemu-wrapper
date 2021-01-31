@@ -2,4 +2,4 @@
 
 This is basically a fork of **TermOne Plus**.
 
-Code of "TermOne Plus" is hosted in https://gitlab.com/termapps/termoneplus[public repository].
+Code of "TermOne Plus" is hosted in https://gitlab.com/termapps/termoneplus
