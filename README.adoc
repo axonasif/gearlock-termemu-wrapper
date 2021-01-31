@@ -1,4 +1,4 @@
-# GearLock terminal emulator wrapper
+# GearLock terminal emulator wrapper [![GearLock](https://github.com/AXIM0S/gearlock-termemu-wrapper/workflows/CI/badge.svg)](https://github.com/AXIM0S/gearlock-termemu-wrapper/actions)
 
 This is basically a fork of **TermOne Plus**.
 
